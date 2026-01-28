@@ -4,13 +4,13 @@ import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/RGBELoader.js/+esm';
 
 // ─────────────────────────────────────────────
-// ESCENA
+// SCENE
 // ─────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff); // fondo blanco
 
 // ─────────────────────────────────────────────
-// CÁMARA
+// CAMERA
 // ─────────────────────────────────────────────
 const camera = new THREE.PerspectiveCamera(
   50,
@@ -29,21 +29,21 @@ renderer.physicallyCorrectLights = true;
 document.body.appendChild(renderer.domElement);
 
 // ─────────────────────────────────────────────
-// CONTROLES
+// CONTROLS
 // ─────────────────────────────────────────────
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 // ─────────────────────────────────────────────
-// LUCES BÁSICAS
+// LIGHTING
 // ─────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+scene.add(new THREE.AmbientLight(0xffffff, 2.0));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
 // ─────────────────────────────────────────────
-// ENVIRONMENT (opcional, pero recomendado)
+// ENVIRONMENT
 // ─────────────────────────────────────────────
 const pmrem = new THREE.PMREMGenerator(renderer);
 
@@ -55,7 +55,7 @@ new RGBELoader().load('./studio.hdr', (hdr) => {
 });
 
 // ─────────────────────────────────────────────
-// CARGA DEL MODELO
+// LOAD MODEL
 // ─────────────────────────────────────────────
 const loader = new GLTFLoader();
 
@@ -87,7 +87,7 @@ loader.load('./model.glb', (gltf) => {
 
   scene.add(gltf.scene);
 
-  // ───── ENCUADRE AUTOMÁTICO (CLAVE)
+  // ───── AUTOMATIC FRAMING
   const box = new THREE.Box3().setFromObject(gltf.scene);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
@@ -129,4 +129,5 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
