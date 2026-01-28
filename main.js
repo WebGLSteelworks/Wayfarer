@@ -37,7 +37,7 @@ controls.enableDamping = true;
 // ─────────────────────────────────────────────
 // LIGHTING
 // ─────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+scene.add(new THREE.AmbientLight(0xffffff, 1.5));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
@@ -129,5 +129,6 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
