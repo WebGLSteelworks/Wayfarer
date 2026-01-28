@@ -78,7 +78,11 @@ loader.load('./model.glb', (gltf) => {
     m.ior = 1.45;
 
     // Tinte verde botella (ajusta a tu gusto)
-    m.color.setRGB(0.1, 0.25, 0.1);
+    m.color.setRGB(1, 1, 1);
+
+    // Volumetric tint
+    m.attenuationColor = new THREE.Color(0.1, 0.25, 0.1); // verde botella
+    m.attenuationDistance = 1.2; // controla intensidad del color
 
     m.depthWrite = false;
     m.side = THREE.DoubleSide;
@@ -129,6 +133,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
