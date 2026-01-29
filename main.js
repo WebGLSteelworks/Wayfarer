@@ -71,6 +71,27 @@ loader.load('./model.glb', (gltf) => {
     // Filtra por nombre de material
     if (!m.name || !m.name.toLowerCase().includes('green')) return;
 
+    // 🔁 FORZAR MATERIAL FÍSICO REAL
+    const physicalMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      roughness: 0.08,
+      transmission: 1.0,
+      thickness: 0.5,
+      ior: 1.45,
+      attenuationColor: new THREE.Color(0.1, 0.25, 0.1), // verde botella
+      attenuationDistance: 0.12, // 👈 AJUSTA AQUÍ
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    // Mantener maps si los hubiera
+    physicalMaterial.normalMap = obj.material.normalMap || null;
+    physicalMaterial.map = obj.material.map || null;
+    
+    // Asignar material nuevo
+    obj.material = physicalMaterial;
+
+
     m.transparent = true;
     m.transmission = 1.0;
     m.thickness = 1.0;
@@ -133,6 +154,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
