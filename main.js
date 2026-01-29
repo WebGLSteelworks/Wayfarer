@@ -37,8 +37,8 @@ controls.enableDamping = true;
 // ─────────────────────────────────────────────
 // LIGHTING
 // ─────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+scene.add(new THREE.AmbientLight(0xffffff, 3.0));
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
@@ -50,7 +50,7 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 new RGBELoader().load('./studio.hdr', (hdr) => {
   const envMap = pmrem.fromEquirectangular(hdr).texture;
   scene.environment = envMap;
-  scene.environmentIntensity = 1.5;
+  scene.environmentIntensity = 0.5;
   hdr.dispose();
 });
 
@@ -72,28 +72,30 @@ loader.load('./model.glb', (gltf) => {
     if (!m.name || !m.name.toLowerCase().includes('green')) return;
 
     // 🔁 FORZAR MATERIAL FÍSICO REAL
-    const physicalMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(0.65, 0.8, 0.65), // casi blanco con tinte
-      roughness: 0.02,
-      metalness: 0,
-    
-      transmission: 0.0,      // 👈 CLAVE
-      transparent: true,
-      opacity: 0.5,           // 👈 transparencia controlada
-    
-      ior: 1.45,               // solo para Fresnel
-      reflectivity: 0.5,
-    
-      side: THREE.FrontSide,
-      depthWrite: false
-    });
+    const sunglassLensMaterial = new THREE.MeshPhysicalMaterial({
+		color: new THREE.Color(0.12, 0.13, 0.05), // verde oliva Ray-Ban
+
+		roughness: 0.03,
+		metalness: 0.2,
+
+		transparent: true,
+		opacity: 0.9,
+		transmission: 0.0,
+
+		ior: 1.45,
+		reflectivity: 0.0,
+
+		side: THREE.FrontSide,
+		depthWrite: false
+	  });
+
 
     // Mantener maps si los hubiera
-    physicalMaterial.normalMap = obj.material.normalMap || null;
-    physicalMaterial.map = obj.material.map || null;
+    sunglassLensMaterial.normalMap = obj.material.normalMap || null;
+    sunglassLensMaterial.map = obj.material.map || null;
     
     // Asignar material nuevo
-    obj.material = physicalMaterial;
+    obj.material = sunglassLensMaterial;
 
 
     m.transparent = true;
