@@ -69,7 +69,7 @@ loader.load('./model.glb', (gltf) => {
     if (!m) return;
 
     // Filtra por nombre de material
-    if (!m.name || !m.name.toLowerCase().includes('glass')) return;
+    if (!m.name || !m.name.toLowerCase().includes('xxx')) return;
 
     m.transparent = true;
     m.transmission = 1.0;
@@ -133,6 +133,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
