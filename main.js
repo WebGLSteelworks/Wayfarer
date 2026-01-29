@@ -73,20 +73,16 @@ loader.load('./model.glb', (gltf) => {
 
     // 🔁 FORZAR MATERIAL FÍSICO REAL
     const physicalMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-
-      // Superficie
-      roughness: 0.08,
+      color: new THREE.Color(0.95, 0.98, 0.95), // casi blanco con tinte
+      roughness: 0.02,
       metalness: 0,
     
-      // Vidrio
-      transmission: 1.0,
-      ior: 1.0,
+      transmission: 0.0,      // 👈 CLAVE
+      transparent: true,
+      opacity: 0.92,           // 👈 transparencia controlada
     
-      // 🔑 MUY IMPORTANTE
-      thickness: 0.25,                // 👈 MÁS BAJO de lo que crees
-      attenuationColor: new THREE.Color(0.75, 0.9, 0.75), // 👈 VERDE MUY CLARO
-      attenuationDistance: 0.2,       // 👈 MÁS ALTO
+      ior: 1.45,               // solo para Fresnel
+      reflectivity: 0.9,
     
       side: THREE.FrontSide,
       depthWrite: false
@@ -162,6 +158,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
