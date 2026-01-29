@@ -7,7 +7,7 @@ import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/
 // SCENE
 // ─────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff); // fondo blanco
+scene.background = new THREE.Color(0xf2f2f2); // fondo blanco
 
 // ─────────────────────────────────────────────
 // CAMERA
@@ -73,7 +73,7 @@ loader.load('./model.glb', (gltf) => {
 
     // 🔁 FORZAR MATERIAL FÍSICO REAL
     const physicalMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(0.85, 0.95, 0.85), // casi blanco con tinte
+      color: new THREE.Color(0.65, 0.8, 0.65), // casi blanco con tinte
       roughness: 0.02,
       metalness: 0,
     
@@ -158,6 +158,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
