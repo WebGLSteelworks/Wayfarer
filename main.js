@@ -80,8 +80,8 @@ loader.load('./model.glb', (gltf) => {
       metalness: 0,
     
       // Vidrio
-      transmission: 1.0,
-      ior: 1.45,
+      transmission: 0.8,
+      ior: 1.52,
     
       // 🔑 MUY IMPORTANTE
       thickness: 0.25,                // 👈 MÁS BAJO de lo que crees
@@ -162,6 +162,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
