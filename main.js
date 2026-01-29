@@ -80,13 +80,13 @@ loader.load('./model.glb', (gltf) => {
       metalness: 0,
     
       // Vidrio
-      transmission: 0.5,
+      transmission: 1.0,
       ior: 1.0,
     
       // 🔑 MUY IMPORTANTE
       thickness: 0.25,                // 👈 MÁS BAJO de lo que crees
       attenuationColor: new THREE.Color(0.75, 0.9, 0.75), // 👈 VERDE MUY CLARO
-      attenuationDistance: 0.4,       // 👈 MÁS ALTO
+      attenuationDistance: 0.2,       // 👈 MÁS ALTO
     
       side: THREE.FrontSide,
       depthWrite: false
@@ -162,6 +162,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
