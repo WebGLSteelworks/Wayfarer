@@ -73,7 +73,7 @@ loader.load('./model.glb', (gltf) => {
 
     m.transparent = true;
     m.transmission = 1.0;
-    m.thickness = 0.6;
+    m.thickness = 0.1;
     m.roughness = 0.1;
     m.ior = 1.45;
 
@@ -82,7 +82,7 @@ loader.load('./model.glb', (gltf) => {
 
     // Volumetric tint
     m.attenuationColor = new THREE.Color(0.1, 0.25, 0.1); // verde botella
-    m.attenuationDistance = 1.2; // controla intensidad del color
+    m.attenuationDistance = 0.1; // controla intensidad del color
 
     m.depthWrite = false;
     m.side = THREE.DoubleSide;
@@ -133,6 +133,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
