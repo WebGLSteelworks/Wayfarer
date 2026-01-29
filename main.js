@@ -73,13 +73,13 @@ loader.load('./model.glb', (gltf) => {
 
     // 🔁 FORZAR MATERIAL FÍSICO REAL
     const physicalMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(0.95, 0.98, 0.95), // casi blanco con tinte
+      color: new THREE.Color(0.85, 0.95, 0.85), // casi blanco con tinte
       roughness: 0.02,
       metalness: 0,
     
       transmission: 0.0,      // 👈 CLAVE
       transparent: true,
-      opacity: 0.92,           // 👈 transparencia controlada
+      opacity: 0.88,           // 👈 transparencia controlada
     
       ior: 1.45,               // solo para Fresnel
       reflectivity: 0.9,
@@ -158,6 +158,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
+
 
 
 
