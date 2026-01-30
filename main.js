@@ -14,6 +14,26 @@ logoTexture.colorSpace = THREE.SRGBColorSpace;
 logoTexture.flipY = false; // importante para glTF
 
 const cameras = {};
+let activeCameraName = null;
+
+const clock = new THREE.Clock();
+
+// ─────────────────────────────
+// ANIMACIÓN DEL CRISTAL (ESTADO)
+// ─────────────────────────────
+const glassAnim = {
+  state: 'waitGreen',
+  timer: 0,
+  duration: 2.0 // segundos de transición
+};
+
+
+// ─────────────────────────────
+// MATERIAL DEL CRISTAL (GLOBAL)
+// ─────────────────────────────
+const glassMaterials = [];
+const originalGlassColors = [];
+
 
 
 // ─────────────────────────────────────────────
@@ -27,12 +47,13 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const cameraTargets = {};
+let pendingFreeCamera = false;
+
 
 
 // ─────────────────────────────────────────────
 // ACTIVE CAMERA + TRANSITION STATE
 // ─────────────────────────────────────────────
-let activeCamera = camera;
 
 let transition = {
   active: false,
@@ -59,7 +80,20 @@ document.body.appendChild(renderer.domElement);
 // CONTROLS
 // ─────────────────────────────────────────────
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.enabled = false; 
+
+// 🔑 CONFIGURACIÓN CORRECTA
 controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+controls.enableRotate = true;
+controls.enableZoom = true;
+controls.enablePan = false;
+
+// límites razonables
+controls.minDistance = 0.2;
+controls.maxDistance = 10;
+
 
 // ─────────────────────────────────────────────
 // LIGHTING
@@ -82,31 +116,42 @@ new RGBELoader().load('./studio.hdr', (hdr) => {
 });
 
 function smoothSwitchCamera(name) {
-  const target = cameraTargets[name];
-  if (!target) {
-    console.warn('Camera not found:', name);
+  activeCameraName = name;
+
+  const camData = cameraTargets[name];
+  if (!camData) return;
+
+  // ───── CAM_FREE (SIN TRANSICIÓN)
+  if (name === 'Cam_Free') {
+
+    transition.active = false;
+
+    camera.position.copy(camData.position);
+    controls.target.copy(camData.target);
+
+    camera.lookAt(controls.target);
+    camera.updateMatrixWorld();
+
+    controls.update();
+    controls.enabled = true;
+
     return;
   }
 
-  transition.fromPos.copy(activeCamera.position);
-  transition.fromQuat.copy(activeCamera.quaternion);
+  // ───── CÁMARAS FIJAS (TRANSICIÓN)
+  controls.enabled = false; // 🔑 CLAVE
 
-  transition.toPos.copy(target.position);
-  transition.toQuat.copy(target.quaternion);
+  transition.fromPos.copy(camera.position);
+  transition.fromQuat.copy(camera.quaternion);
+
+  transition.toPos.copy(camData.position);
+  transition.toQuat.copy(camData.quaternion);
 
   transition.startTime = performance.now();
   transition.active = true;
-
-  // 👉 Controles
-  if (name === 'Cam_Free') {
-    controls.enabled = true;
-    controls.target.set(0, 0, 0);
-  } else {
-    controls.enabled = false;
-	controls.reset();
-
-  }
 }
+
+
 
 
 
@@ -121,22 +166,30 @@ const loader = new GLTFLoader();
 loader.load('./model.glb', (gltf) => {
 	
 	// ───── RECOGER CAMARAS EXPORTADAS DESDE C4D
-	gltf.scene.traverse((obj) => {
-	  if (obj.isCamera) {
-		cameras[obj.name] = obj;
-	  }
-	});
-	
+
 	gltf.scene.traverse((obj) => {
 	  if (obj.isCamera) {
 		cameras[obj.name] = obj;
 
-		// 🔒 Cachear transformaciones ORIGINALES
+		const pos = obj.getWorldPosition(new THREE.Vector3());
+		const quat = obj.getWorldQuaternion(new THREE.Quaternion());
+
+		// Calcular forward vector de la cámara
+		const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
+
+		// Punto al que mira la cámara en C4D
+		const target = new THREE.Vector3(0, 0, 0);
+
 		cameraTargets[obj.name] = {
-		  position: obj.getWorldPosition(new THREE.Vector3()),
-		  quaternion: obj.getWorldQuaternion(new THREE.Quaternion())
+		  position: pos,
+		  quaternion: quat,
+		  target: target
 		};
+
+
 	  }
+	  
+
 	});
 
 
@@ -168,6 +221,8 @@ loader.load('./model.glb', (gltf) => {
 		side: THREE.FrontSide,
 		depthWrite: false
 	  });
+	  
+  
 
 	// 👉 LOGO BLANCO SERIGRAFIADO (AQUÍ SÍ)
 	sunglassLensMaterial.emissiveMap = logoTexture;
@@ -182,7 +237,13 @@ loader.load('./model.glb', (gltf) => {
     // Mantener maps si los hubiera
     sunglassLensMaterial.normalMap = obj.material.normalMap || null;
     sunglassLensMaterial.map = obj.material.map || null;
-    
+	
+	// Guardar color original del cristal
+	//glassMaterial = sunglassLensMaterial;
+	glassMaterials.push(sunglassLensMaterial);
+	originalGlassColors.push(sunglassLensMaterial.color.clone());
+
+   
     // Asignar material nuevo
     obj.material = sunglassLensMaterial;
 
@@ -207,56 +268,13 @@ loader.load('./model.glb', (gltf) => {
 
   scene.add(gltf.scene);
   
-  // ───── USAR CAMARA POR DEFECTO
-	if (cameras.Cam_Front) {
-	  activeCamera = cameras.Cam_Front;
-	  activeCamera.aspect = window.innerWidth / window.innerHeight;
-	  activeCamera.updateProjectionMatrix();
-
-	  controls.object = activeCamera;
-	  controls.update();
+	// ───── Arrancar en Cam_Front
+	if (cameraTargets.Cam_Front) {
+	smoothSwitchCamera('Cam_Front');
 	}
+  
 
-
-  // ───── AUTOMATIC FRAMING
-  const box = new THREE.Box3().setFromObject(gltf.scene);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  // Centrar modelo en el origen
-  gltf.scene.position.sub(center);
-
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180);
-  let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-  cameraZ *= 1.4; // margen
-
-  camera.position.set(0, maxDim * 0.4, cameraZ);
-  camera.lookAt(0, 0, 0);
-
-  controls.target.set(0, 0, 0);
-  controls.update();
-
-  camera.near = cameraZ / 100;
-  camera.far = cameraZ * 100;
-  camera.updateProjectionMatrix();
 });
-
-	function switchCamera(name) {
-	  const cam = cameras[name];
-	  if (!cam) {
-		console.warn(`Camera not found: ${name}`);
-		return;
-	  }
-
-	  activeCamera = cam;
-	  activeCamera.aspect = window.innerWidth / window.innerHeight;
-	  activeCamera.updateProjectionMatrix();
-
-	  controls.object = activeCamera;
-	  controls.update();
-	}
-
 
 
 // ─────────────────────────────────────────────
@@ -269,42 +287,123 @@ window.addEventListener('resize', () => {
 });
 
 // ─────────────────────────────────────────────
-// LOOP
+// LOOP ANIMATE
 // ─────────────────────────────────────────────
 function animate(time) {
   requestAnimationFrame(animate);
 
-  if (transition.active) {
-    const elapsed = (time - transition.startTime) / 1000;
-    const t = Math.min(elapsed / transition.duration, 1);
+if (glassMaterials.length > 0) {
 
-    // Ease in-out suave
-    const ease = t * t * (3 - 2 * t);
+  // ❌ NO estamos en Cam_Lenses → cristal fijo
+  if (activeCameraName !== 'Cam_Lenses') {
 
-    // Interpolar posición
-    activeCamera.position.lerpVectors(
-      transition.fromPos,
-      transition.toPos,
-      ease
-    );
+    glassMaterials.forEach((mat, i) => {
+      mat.color.copy(originalGlassColors[i]);
+    });
 
-    // Interpolar rotación (FORMA CORRECTA r176)
-    activeCamera.quaternion
-      .copy(transition.fromQuat)
-      .slerp(transition.toQuat, ease);
-
-    if (t >= 1) {
-      transition.active = false;
-    }
+    glassAnim.state = 'waitGreen';
+    glassAnim.timer = 0;
   }
 
-  controls.update();
-  renderer.render(scene, activeCamera);
+  // ✅ SOLO Cam_Lenses anima
+  else {
+    const delta = clock.getDelta();
+    glassAnim.timer += delta;
+
+    glassMaterials.forEach((mat, i) => {
+      const originalColor = originalGlassColors[i];
+
+      switch (glassAnim.state) {
+
+        case 'waitGreen':
+          if (glassAnim.timer > 2) {
+            glassAnim.timer = 0;
+            glassAnim.state = 'toClear';
+          }
+          break;
+
+        case 'toClear': {
+          const t = Math.min(glassAnim.timer / glassAnim.duration, 1);
+          const ease = t * t * (3 - 2 * t);
+
+          mat.color.lerpColors(
+            originalColor,
+            new THREE.Color(1, 1, 1),
+            ease
+          );
+
+          if (t >= 1) {
+            glassAnim.timer = 0;
+            glassAnim.state = 'waitClear';
+          }
+          break;
+        }
+
+        case 'waitClear':
+          if (glassAnim.timer > 2) {
+            glassAnim.timer = 0;
+            glassAnim.state = 'toGreen';
+          }
+          break;
+
+        case 'toGreen': {
+          const t = Math.min(glassAnim.timer / glassAnim.duration, 1);
+          const ease = t * t * (3 - 2 * t);
+
+          mat.color.lerpColors(
+            new THREE.Color(1, 1, 1),
+            originalColor,
+            ease
+          );
+
+          if (t >= 1) {
+            glassAnim.timer = 0;
+            glassAnim.state = 'waitGreen';
+          }
+          break;
+        }
+      }
+    });
+  }
 }
-animate();
+
+
+  
+  
+	if (transition.active) {
+
+	  const elapsed = (time - transition.startTime) / 1000;
+	  const t = Math.min(elapsed / transition.duration, 1);
+	  const ease = t * t * (3 - 2 * t);
+
+	  camera.position.lerpVectors(
+		transition.fromPos,
+		transition.toPos,
+		ease
+	  );
+
+	  // 🔑 SOLO cámaras fijas interpolan rotación
+	  if (activeCameraName !== 'Cam_Free') {
+		camera.quaternion
+		  .copy(transition.fromQuat)
+		  .slerp(transition.toQuat, ease);
+	  }
+
+	  if (t >= 1) {
+		transition.active = false;
+	  }
+	}
 
 
 
+
+  if (controls.enabled) {
+	  controls.update();
+  }
+
+  renderer.render(scene, camera);
+
+}
 
 // ─────────────────────────────────────────────
 // CAMERA BUTTONS UI
