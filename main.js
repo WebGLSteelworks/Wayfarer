@@ -2,6 +2,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.176.0/+esm';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/controls/OrbitControls.js/+esm';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/GLTFLoader.js/+esm';
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/RGBELoader.js/+esm';
+import { MODEL_CONFIG as SHINY } from './configs/shiny.js';
+import { MODEL_CONFIG as MATTE } from './configs/matte.js';
 
 // ─────────────────────────────────────────────
 // VAR
@@ -18,13 +20,140 @@ let activeCameraName = null;
 
 const clock = new THREE.Clock();
 
+let currentConfig = SHINY;
+let currentModel = null;
+
+
+// ─────────────────────────────
+// UI FOR MODEL SELECTION
+// ─────────────────────────────
+
+const modelUI = document.createElement('div');
+modelUI.style.position = 'fixed';
+modelUI.style.right = '20px';
+modelUI.style.top = '50%';
+modelUI.style.transform = 'translateY(-50%)';
+modelUI.style.display = 'flex';
+modelUI.style.flexDirection = 'column';
+modelUI.style.gap = '10px';
+modelUI.style.zIndex = '20';
+
+document.body.appendChild(modelUI);
+
+function makeModelButton(label, config) {
+  const btn = document.createElement('button');
+  btn.textContent = label;
+
+  btn.style.padding = '10px 16px';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '6px';
+  btn.style.cursor = 'pointer';
+  btn.style.background = '#222';
+  btn.style.color = '#fff';
+  btn.style.fontSize = '14px';
+
+  btn.onclick = () => {
+    currentConfig = config;
+    loadModel(config);
+  };
+
+  modelUI.appendChild(btn);
+}
+
+
+makeModelButton('Shiny', SHINY);
+makeModelButton('Matte', MATTE);
+
+
+// ─────────────────────────────
+// LOAD GLB MODEL
+// ─────────────────────────────
+
+function loadModel(config) {
+
+  // ───── limpiar modelo anterior
+  if (currentModel) {
+    scene.remove(currentModel);
+    currentModel.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(m => m.dispose());
+        } else {
+          obj.material.dispose();
+        }
+      }
+    });
+  }
+
+  // reset estados
+  glassMaterials.length = 0;
+  originalGlassColors.length = 0;
+  Object.keys(cameraTargets).forEach(k => delete cameraTargets[k]);
+
+  loader.load(config.glb, (gltf) => {
+
+    currentModel = gltf.scene;
+    scene.add(currentModel);
+	
+	// ───── calcular centro real del modelo
+	const box = new THREE.Box3().setFromObject(currentModel);
+	const modelCenter = new THREE.Vector3();
+	box.getCenter(modelCenter);
+
+
+    // ───── recoger cámaras
+    gltf.scene.traverse(obj => {
+      if (obj.isCamera) {
+
+		  const pos = obj.getWorldPosition(new THREE.Vector3());
+		  const quat = obj.getWorldQuaternion(new THREE.Quaternion());
+
+		  const target =
+			obj.name === 'Cam_Free'
+			  ? modelCenter.clone()
+			  : modelCenter.clone();
+
+		  cameraTargets[obj.name] = {
+			position: pos,
+			quaternion: quat,
+			target: target
+		  };
+		}
+
+      // ───── cristal
+      if (obj.isMesh && obj.material?.name?.toLowerCase().includes('glass')) {
+
+        const mat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(...config.glass.color),
+          roughness: config.glass.roughness,
+          metalness: config.glass.metalness,
+          transparent: true,
+          opacity: config.glass.opacity,
+          transmission: 0.0,
+          ior: 1.45,
+          depthWrite: false
+        });
+
+        glassMaterials.push(mat);
+        originalGlassColors.push(mat.color.clone());
+        obj.material = mat;
+      }
+    });
+
+    // arrancar en cámara inicial
+    smoothSwitchCamera(config.startCamera);
+  });
+}
+
+
 // ─────────────────────────────
 // ANIMACIÓN DEL CRISTAL (ESTADO)
 // ─────────────────────────────
 const glassAnim = {
   state: 'waitGreen',
   timer: 0,
-  duration: 2.0 // segundos de transición
+  duration: 1.5 // segundos de transición
 };
 
 
@@ -178,7 +307,7 @@ loader.load('./model.glb', (gltf) => {
 		const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
 
 		// Punto al que mira la cámara en C4D
-		const target = new THREE.Vector3(0, 0, 0);
+		const target = modelCenter.clone();
 
 		cameraTargets[obj.name] = {
 		  position: pos,
@@ -446,7 +575,7 @@ cameraButtons.forEach(({ label, name }) => {
 });
 
 
-
+loadModel(currentConfig);
 animate();
 
 
