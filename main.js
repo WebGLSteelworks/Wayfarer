@@ -134,6 +134,12 @@ function loadModel(config) {
           ior: 1.45,
           depthWrite: false
         });
+		
+		// ───── WHITE LOGO STENCIL
+		mat.emissiveMap = logoTexture;
+		mat.emissive = new THREE.Color(1, 1, 1);
+		mat.emissiveIntensity = 0.6; // ajusta si quieres
+		mat.needsUpdate = true;
 
         glassMaterials.push(mat);
         originalGlassColors.push(mat.color.clone());
@@ -148,7 +154,7 @@ function loadModel(config) {
 
 
 // ─────────────────────────────
-// ANIMACIÓN DEL CRISTAL (ESTADO)
+// GLASS ANIMATION
 // ─────────────────────────────
 const glassAnim = {
   state: 'waitGreen',
@@ -158,7 +164,7 @@ const glassAnim = {
 
 
 // ─────────────────────────────
-// MATERIAL DEL CRISTAL (GLOBAL)
+// GLASS MAT (GLOBAL)
 // ─────────────────────────────
 const glassMaterials = [];
 const originalGlassColors = [];
@@ -267,7 +273,7 @@ function smoothSwitchCamera(name) {
     return;
   }
 
-  // ───── CÁMARAS FIJAS (TRANSICIÓN)
+  // ───── CAMERA TRANSITION
   controls.enabled = false; // 🔑 CLAVE
 
   transition.fromPos.copy(camera.position);
@@ -294,7 +300,7 @@ const loader = new GLTFLoader();
 
 loader.load('./model.glb', (gltf) => {
 	
-	// ───── RECOGER CAMARAS EXPORTADAS DESDE C4D
+	// ───── FROM C4D
 
 	gltf.scene.traverse((obj) => {
 	  if (obj.isCamera) {
@@ -333,7 +339,7 @@ loader.load('./model.glb', (gltf) => {
     // Filtra por nombre de material
     if (!m.name || !m.name.toLowerCase().includes('green')) return;
 
-    // 🔁 FORZAR MATERIAL FÍSICO REAL
+    // 🔁 GLASS MATERIAL BY CODE
     const sunglassLensMaterial = new THREE.MeshPhysicalMaterial({
 		color: new THREE.Color(0.12, 0.13, 0.05), // verde oliva Ray-Ban
 
@@ -353,7 +359,7 @@ loader.load('./model.glb', (gltf) => {
 	  
   
 
-	// 👉 LOGO BLANCO SERIGRAFIADO (AQUÍ SÍ)
+	// 👉 WHITE LOGO STENCIL
 	sunglassLensMaterial.emissiveMap = logoTexture;
 	sunglassLensMaterial.emissive = new THREE.Color(1, 1, 1);
 	sunglassLensMaterial.emissiveIntensity = 0.6;
@@ -434,7 +440,7 @@ if (glassMaterials.length > 0) {
     glassAnim.timer = 0;
   }
 
-  // ✅ SOLO Cam_Lenses anima
+  // ✅ GLASS ANIMATION
   else {
     const delta = clock.getDelta();
     glassAnim.timer += delta;
