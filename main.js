@@ -2,8 +2,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.176.0/+esm';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/controls/OrbitControls.js/+esm';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/GLTFLoader.js/+esm';
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/RGBELoader.js/+esm';
-import { MODEL_CONFIG as SHINY } from './configs/shiny.js';
-import { MODEL_CONFIG as MATTE } from './configs/matte.js';
+
+import { MODEL_CONFIG as MATTE_BLACK_CLEAR } from './configs/matte_black_clear.js';
+import { MODEL_CONFIG as SHINY_BLACK_GREEN } from './configs/shiny_black_green.js';
+import { MODEL_CONFIG as MATTE_BLACK_GGRAPH } from './configs/matte_black_ggraph.js';
+import { MODEL_CONFIG as SHINY_BLACK_CGREEN } from './configs/shiny_black_cgreen.js';
+import { MODEL_CONFIG as MATTE_BLACK_CGREY } from './configs/matte_black_cgrey.js';
 
 // ─────────────────────────────────────────────
 // VAR
@@ -11,17 +15,25 @@ import { MODEL_CONFIG as MATTE } from './configs/matte.js';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf2f2f2); // fondo blanco
 
-const logoTexture = new THREE.TextureLoader().load('./Coperni_alpha.jpg');
+const logoTexture = new THREE.TextureLoader().load('./textures/Coperni_alpha.jpg');
+const textureLoader = new THREE.TextureLoader();
+
 logoTexture.colorSpace = THREE.SRGBColorSpace;
 logoTexture.flipY = false; // importante para glTF
 
 const cameras = {};
-let activeCameraName = null;
 
 const clock = new THREE.Clock();
 
-let currentConfig = SHINY;
+let currentConfig = SHINY_BLACK_CGREEN;
 let currentModel = null;
+const loader = new GLTFLoader();
+
+let glassAnimationEnabled = true;
+let activeCameraName = null;
+let glassAnimateCamera = null;
+let wasAnimatingGlass = false;
+
 
 
 // ─────────────────────────────
@@ -60,9 +72,11 @@ function makeModelButton(label, config) {
   modelUI.appendChild(btn);
 }
 
-
-makeModelButton('Shiny', SHINY);
-makeModelButton('Matte', MATTE);
+makeModelButton('Matte Black Clear', MATTE_BLACK_CLEAR);
+makeModelButton('Shiny Black Green', SHINY_BLACK_GREEN);
+makeModelButton('Matte Black Gradient Graphite', MATTE_BLACK_GGRAPH);
+makeModelButton('Shiny Black Clear to Green', SHINY_BLACK_CGREEN);
+makeModelButton('Matte Black Clear to Grey', MATTE_BLACK_CGREY);
 
 
 // ─────────────────────────────
@@ -70,6 +84,9 @@ makeModelButton('Matte', MATTE);
 // ─────────────────────────────
 
 function loadModel(config) {
+	
+  glassAnimationEnabled = config.glass.animate === true;
+  glassAnimateCamera = config.glass.animateCamera || null;
 
   // ───── limpiar modelo anterior
   if (currentModel) {
@@ -89,6 +106,8 @@ function loadModel(config) {
   // reset estados
   glassMaterials.length = 0;
   originalGlassColors.length = 0;
+  glassAnim.state = 'waitGreen';
+  glassAnim.timer = 0;
   Object.keys(cameraTargets).forEach(k => delete cameraTargets[k]);
 
   loader.load(config.glb, (gltf) => {
@@ -135,6 +154,13 @@ function loadModel(config) {
           depthWrite: false
         });
 		
+		// ───── OPACITY GRADIENT (si existe)
+		if (config.glass.opacityMap) {
+		  const alphaTex = textureLoader.load(config.glass.opacityMap);
+		  alphaTex.flipY = false;
+		  mat.alphaMap = alphaTex;
+		}
+		
 		// ───── WHITE LOGO STENCIL
 		mat.emissiveMap = logoTexture;
 		mat.emissive = new THREE.Color(1, 1, 1);
@@ -159,7 +185,10 @@ function loadModel(config) {
 const glassAnim = {
   state: 'waitGreen',
   timer: 0,
-  duration: 1.5 // segundos de transición
+
+  duration: 1.5,
+  waitGreen: 1.0,
+  waitClear: 1.0
 };
 
 
@@ -287,131 +316,6 @@ function smoothSwitchCamera(name) {
 }
 
 
-
-
-
-
-
-
-// ─────────────────────────────────────────────
-// LOADER
-// ─────────────────────────────────────────────
-const loader = new GLTFLoader();
-
-loader.load('./model.glb', (gltf) => {
-	
-	// ───── FROM C4D
-
-	gltf.scene.traverse((obj) => {
-	  if (obj.isCamera) {
-		cameras[obj.name] = obj;
-
-		const pos = obj.getWorldPosition(new THREE.Vector3());
-		const quat = obj.getWorldQuaternion(new THREE.Quaternion());
-
-		// Calcular forward vector de la cámara
-		const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quat);
-
-		// Punto al que mira la cámara en C4D
-		const target = modelCenter.clone();
-
-		cameraTargets[obj.name] = {
-		  position: pos,
-		  quaternion: quat,
-		  target: target
-		};
-
-
-	  }
-	  
-
-	});
-
-
-
-  // ───── Ajuste de materiales (cristal)
-  gltf.scene.traverse((obj) => {
-    if (!obj.isMesh) return;
-
-    const m = obj.material;
-    if (!m) return;
-
-    // Filtra por nombre de material
-    if (!m.name || !m.name.toLowerCase().includes('green')) return;
-
-    // 🔁 GLASS MATERIAL BY CODE
-    const sunglassLensMaterial = new THREE.MeshPhysicalMaterial({
-		color: new THREE.Color(0.12, 0.13, 0.05), // verde oliva Ray-Ban
-
-		roughness: 0.03,
-		metalness: 0.2,
-
-		transparent: true,
-		opacity: 0.9,
-		transmission: 0.0,
-
-		ior: 1.45,
-		reflectivity: 0.0,
-
-		side: THREE.FrontSide,
-		depthWrite: false
-	  });
-	  
-  
-
-	// 👉 WHITE LOGO STENCIL
-	sunglassLensMaterial.emissiveMap = logoTexture;
-	sunglassLensMaterial.emissive = new THREE.Color(1, 1, 1);
-	sunglassLensMaterial.emissiveIntensity = 0.6;
-
-	// Mantener maps originales si existen
-	sunglassLensMaterial.normalMap = m.normalMap || null;
-	sunglassLensMaterial.map = m.map || null;
-
-
-    // Mantener maps si los hubiera
-    sunglassLensMaterial.normalMap = obj.material.normalMap || null;
-    sunglassLensMaterial.map = obj.material.map || null;
-	
-	// Guardar color original del cristal
-	//glassMaterial = sunglassLensMaterial;
-	glassMaterials.push(sunglassLensMaterial);
-	originalGlassColors.push(sunglassLensMaterial.color.clone());
-
-   
-    // Asignar material nuevo
-    obj.material = sunglassLensMaterial;
-
-
-    m.transparent = true;
-    m.transmission = 1.0;
-    m.thickness = 1.0;
-    m.roughness = 0.1;
-    m.ior = 1.45;
-
-    // Tinte verde botella (ajusta a tu gusto)
-    m.color.setRGB(1, 1, 1);
-
-    // Volumetric tint
-    m.attenuationColor = new THREE.Color(1, 0, 0); // verde botella
-    m.attenuationDistance = 0.05; // controla intensidad del color
-
-    m.depthWrite = false;
-    m.side = THREE.FrontSide;
-    m.needsUpdate = true;
-  });
-
-  scene.add(gltf.scene);
-  
-	// ───── Arrancar en Cam_Front
-	if (cameraTargets.Cam_Front) {
-	smoothSwitchCamera('Cam_Front');
-	}
-  
-
-});
-
-
 // ─────────────────────────────────────────────
 // RESIZE
 // ─────────────────────────────────────────────
@@ -427,31 +331,62 @@ window.addEventListener('resize', () => {
 function animate(time) {
   requestAnimationFrame(animate);
 
-if (glassMaterials.length > 0) {
+  // ─────────────────────────────────────────
+  // CAMERA TRANSITIONS (cámaras fijas)
+  // ─────────────────────────────────────────
+  if (transition.active) {
 
-  // ❌ NO estamos en Cam_Lenses → cristal fijo
-  if (activeCameraName !== 'Cam_Lenses') {
+    const elapsed = (time - transition.startTime) / 1000;
+    const t = Math.min(elapsed / transition.duration, 1);
+    const ease = t * t * (3 - 2 * t);
 
-    glassMaterials.forEach((mat, i) => {
-      mat.color.copy(originalGlassColors[i]);
-    });
+    camera.position.lerpVectors(
+      transition.fromPos,
+      transition.toPos,
+      ease
+    );
 
-    glassAnim.state = 'waitGreen';
-    glassAnim.timer = 0;
+    if (activeCameraName !== 'Cam_Free') {
+      camera.quaternion
+        .copy(transition.fromQuat)
+        .slerp(transition.toQuat, ease);
+    }
+
+    if (t >= 1) {
+      transition.active = false;
+    }
   }
 
-  // ✅ GLASS ANIMATION
-  else {
+  // ─────────────────────────────────────────
+  // ORBIT CONTROLS (solo Cam_Free)
+  // ─────────────────────────────────────────
+  if (controls.enabled) {
+    controls.update();
+  }
+
+  // ─────────────────────────────────────────
+  // GLASS ANIMATION (CONTROLADA POR CONFIG)
+  // ─────────────────────────────────────────
+  const shouldAnimateGlass =
+    glassAnimationEnabled &&
+    glassMaterials.length > 0 &&
+    activeCameraName === glassAnimateCamera;
+
+  if (shouldAnimateGlass) {
+
+    wasAnimatingGlass = true;
+
     const delta = clock.getDelta();
     glassAnim.timer += delta;
 
     glassMaterials.forEach((mat, i) => {
+
       const originalColor = originalGlassColors[i];
 
       switch (glassAnim.state) {
 
         case 'waitGreen':
-          if (glassAnim.timer > 2) {
+          if (glassAnim.timer > glassAnim.waitGreen) {
             glassAnim.timer = 0;
             glassAnim.state = 'toClear';
           }
@@ -475,7 +410,7 @@ if (glassMaterials.length > 0) {
         }
 
         case 'waitClear':
-          if (glassAnim.timer > 2) {
+          if (glassAnim.timer > glassAnim.waitClear) {
             glassAnim.timer = 0;
             glassAnim.state = 'toGreen';
           }
@@ -499,46 +434,27 @@ if (glassMaterials.length > 0) {
         }
       }
     });
-  }
-}
 
+  } else {
 
-  
-  
-	if (transition.active) {
+    // Reset SOLO cuando salimos de la animación
+    if (wasAnimatingGlass) {
+      glassMaterials.forEach((mat, i) => {
+        mat.color.copy(originalGlassColors[i]);
+      });
 
-	  const elapsed = (time - transition.startTime) / 1000;
-	  const t = Math.min(elapsed / transition.duration, 1);
-	  const ease = t * t * (3 - 2 * t);
-
-	  camera.position.lerpVectors(
-		transition.fromPos,
-		transition.toPos,
-		ease
-	  );
-
-	  // 🔑 SOLO cámaras fijas interpolan rotación
-	  if (activeCameraName !== 'Cam_Free') {
-		camera.quaternion
-		  .copy(transition.fromQuat)
-		  .slerp(transition.toQuat, ease);
-	  }
-
-	  if (t >= 1) {
-		transition.active = false;
-	  }
-	}
-
-
-
-
-  if (controls.enabled) {
-	  controls.update();
+      glassAnim.state = 'waitGreen';
+      glassAnim.timer = 0;
+      wasAnimatingGlass = false;
+    }
   }
 
+  // ─────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────
   renderer.render(scene, camera);
-
 }
+
 
 // ─────────────────────────────────────────────
 // CAMERA BUTTONS UI
