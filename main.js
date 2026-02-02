@@ -3,6 +3,7 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/exampl
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/GLTFLoader.js/+esm';
 import { RGBELoader } from 'https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/RGBELoader.js/+esm';
 
+import { MODEL_CONFIG as SHINY_BLACK_BLUE } from './configs/shiny_black_blue.js';
 import { MODEL_CONFIG as MATTE_BLACK_CLEAR } from './configs/matte_black_clear.js';
 import { MODEL_CONFIG as SHINY_BLACK_GREEN } from './configs/shiny_black_green.js';
 import { MODEL_CONFIG as MATTE_BLACK_GGRAPH } from './configs/matte_black_ggraph.js';
@@ -25,7 +26,7 @@ const cameras = {};
 
 const clock = new THREE.Clock();
 
-let currentConfig = SHINY_BLACK_CGREEN;
+let currentConfig = SHINY_BLACK_BLUE;
 let currentModel = null;
 const loader = new GLTFLoader();
 
@@ -72,6 +73,7 @@ function makeModelButton(label, config) {
   modelUI.appendChild(btn);
 }
 
+makeModelButton('Shiny Black Cosmic Blue', SHINY_BLACK_BLUE);
 makeModelButton('Matte Black Clear', MATTE_BLACK_CLEAR);
 makeModelButton('Shiny Black Green', SHINY_BLACK_GREEN);
 makeModelButton('Matte Black Gradient Graphite', MATTE_BLACK_GGRAPH);
