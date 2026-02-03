@@ -14,13 +14,13 @@ import { MODEL_CONFIG as MATTE_BLACK_CGREY } from './configs/matte_black_cgrey.j
 // VAR
 // ─────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf2f2f2); // fondo blanco
+scene.background = new THREE.Color(0xf2f2f2); 
 
 const logoTexture = new THREE.TextureLoader().load('./textures/Coperni_alpha.jpg');
 const textureLoader = new THREE.TextureLoader();
 
 logoTexture.colorSpace = THREE.SRGBColorSpace;
-logoTexture.flipY = false; // importante para glTF
+logoTexture.flipY = false; // flip glTF
 
 const cameras = {};
 
@@ -90,7 +90,7 @@ function loadModel(config) {
   glassAnimationEnabled = config.glass.animate === true;
   glassAnimateCamera = config.glass.animateCamera || null;
 
-  // ───── limpiar modelo anterior
+  // ───── clean last model
   if (currentModel) {
     scene.remove(currentModel);
     currentModel.traverse(obj => {
@@ -105,7 +105,7 @@ function loadModel(config) {
     });
   }
 
-  // reset estados
+  // state reset
   glassMaterials.length = 0;
   originalGlassColors.length = 0;
   glassAnim.state = 'waitGreen';
@@ -117,13 +117,13 @@ function loadModel(config) {
     currentModel = gltf.scene;
     scene.add(currentModel);
 	
-	// ───── calcular centro real del modelo
+	// ───── calculate model pivot
 	const box = new THREE.Box3().setFromObject(currentModel);
 	const modelCenter = new THREE.Vector3();
 	box.getCenter(modelCenter);
 
 
-    // ───── recoger cámaras
+    // ───── load cameras
     gltf.scene.traverse(obj => {
       if (obj.isCamera) {
 
@@ -142,7 +142,7 @@ function loadModel(config) {
 		  };
 		}
 
-      // ───── cristal
+      // ───── glass
       if (obj.isMesh && obj.material?.name?.toLowerCase().includes('glass')) {
 
         const mat = new THREE.MeshPhysicalMaterial({
@@ -156,7 +156,7 @@ function loadModel(config) {
           depthWrite: false
         });
 		
-		// ───── OPACITY GRADIENT (si existe)
+		// ───── OPACITY GRADIENT (if exist)
 		if (config.glass.opacityMap) {
 		  const alphaTex = textureLoader.load(config.glass.opacityMap);
 		  alphaTex.flipY = false;
@@ -166,7 +166,7 @@ function loadModel(config) {
 		// ───── WHITE LOGO STENCIL
 		mat.emissiveMap = logoTexture;
 		mat.emissive = new THREE.Color(1, 1, 1);
-		mat.emissiveIntensity = 0.6; // ajusta si quieres
+		mat.emissiveIntensity = 0.6; // 
 		mat.needsUpdate = true;
 
         glassMaterials.push(mat);
@@ -175,7 +175,7 @@ function loadModel(config) {
       }
     });
 
-    // arrancar en cámara inicial
+    // load starting camera
     smoothSwitchCamera(config.startCamera);
   });
 }
@@ -248,7 +248,6 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enabled = false; 
 
-// 🔑 CONFIGURACIÓN CORRECTA
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 
@@ -256,7 +255,6 @@ controls.enableRotate = true;
 controls.enableZoom = true;
 controls.enablePan = false;
 
-// límites razonables
 controls.minDistance = 0.2;
 controls.maxDistance = 10;
 
@@ -287,7 +285,7 @@ function smoothSwitchCamera(name) {
   const camData = cameraTargets[name];
   if (!camData) return;
 
-  // ───── CAM_FREE (SIN TRANSICIÓN)
+  // ───── CAM_FREE (NO TRANSITION)
   if (name === 'Cam_Free') {
 
     transition.active = false;
@@ -305,7 +303,7 @@ function smoothSwitchCamera(name) {
   }
 
   // ───── CAMERA TRANSITION
-  controls.enabled = false; // 🔑 CLAVE
+  controls.enabled = false; 
 
   transition.fromPos.copy(camera.position);
   transition.fromQuat.copy(camera.quaternion);
@@ -334,7 +332,7 @@ function animate(time) {
   requestAnimationFrame(animate);
 
   // ─────────────────────────────────────────
-  // CAMERA TRANSITIONS (cámaras fijas)
+  // CAMERA TRANSITIONS (Still Cameras)
   // ─────────────────────────────────────────
   if (transition.active) {
 
@@ -360,14 +358,14 @@ function animate(time) {
   }
 
   // ─────────────────────────────────────────
-  // ORBIT CONTROLS (solo Cam_Free)
+  // ORBIT CONTROLS (only Cam_Free)
   // ─────────────────────────────────────────
   if (controls.enabled) {
     controls.update();
   }
 
   // ─────────────────────────────────────────
-  // GLASS ANIMATION (CONTROLADA POR CONFIG)
+  // GLASS ANIMATION (controlled by config)
   // ─────────────────────────────────────────
   const shouldAnimateGlass =
     glassAnimationEnabled &&
@@ -439,7 +437,7 @@ function animate(time) {
 
   } else {
 
-    // Reset SOLO cuando salimos de la animación
+    // Reset ONLY when leave animate
     if (wasAnimatingGlass) {
       glassMaterials.forEach((mat, i) => {
         mat.color.copy(originalGlassColors[i]);
